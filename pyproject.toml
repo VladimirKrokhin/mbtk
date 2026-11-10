@@ -1,0 +1,74 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mbtk"
+version = "0.1.0"
+description = "A small async toolkit for MAX messenger bots, inspired by aiogram 3"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Vladimir Krokhin", email = "krokhinvladimir2004@gmail.com" },
+]
+keywords = ["max", "messenger", "bot", "asyncio", "aiogram", "framework"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+max = ["httpx>=0.28,<1"]
+redis = ["redis>=5,<7"]
+all = ["httpx>=0.28,<1", "redis>=5,<7"]
+
+[project.urls]
+Homepage = "https://github.com/VladimirKrokhin/mbtk"
+Repository = "https://github.com/VladimirKrokhin/mbtk"
+Issues = "https://github.com/VladimirKrokhin/mbtk/issues"
+Changelog = "https://github.com/VladimirKrokhin/mbtk/blob/main/CHANGELOG.md"
+
+[dependency-groups]
+dev = [
+    "build>=1.2",
+    "httpx>=0.28,<1",
+    "pytest>=8",
+    "ruff>=0.16",
+    "twine>=5",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mbtk"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 80
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "I", "UP", "B", "RUF"]
+ignore = [
+    "E501",   # long strings and docstrings are formatted by hand
+    "RUF001", # Cyrillic look-alike letters in test data
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
