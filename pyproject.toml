@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mbtk"
-version = "0.1.1"
+version = "0.2.0"
 description = "A small async toolkit for MAX messenger bots, inspired by aiogram 3"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -32,7 +32,13 @@ dependencies = []
 [project.optional-dependencies]
 max = ["httpx>=0.28,<1"]
 redis = ["redis>=5,<7"]
-all = ["httpx>=0.28,<1", "redis>=5,<7"]
+fastapi = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
+all = [
+    "httpx>=0.28,<1",
+    "redis>=5,<7",
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.30,<1",
+]
 
 [project.urls]
 Homepage = "https://github.com/VladimirKrokhin/mbtk"

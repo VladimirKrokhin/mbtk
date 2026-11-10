@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-10
+
+### Added
+
+- Redis Streams transport: `mbtk.transport` contracts and
+  `RedisStreamQueue` with deduplication, acknowledgements, and failure
+  counters.
+- Framework-agnostic webhook validation and a FastAPI adapter
+  (`mbtk[fastapi]`).
+- `mbtk.retry` error classification and `LoggingMiddleware`.
+- `ErrorMiddleware`, `ErrorPolicy`, and `DefaultErrorPolicy`.
+- Async cache primitives: `MemoryCache`, `NullCache`, and `RedisCache`.
+- Generic worker: `Processor`, `process_once`, `termination_signals`, and
+  `run_poll_loop`.
+
 ## [0.1.1] - 2026-11-10
 
 ### Added
@@ -26,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Optional `RedisFSMStorage` with atomic one-shot claims (`mbtk[redis]`).
 - MAX keyboard and attachment builders.
 
-[Unreleased]: https://github.com/VladimirKrokhin/mbtk/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/VladimirKrokhin/mbtk/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/VladimirKrokhin/mbtk/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/VladimirKrokhin/mbtk/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/VladimirKrokhin/mbtk/releases/tag/v0.1.0

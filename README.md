@@ -35,10 +35,11 @@
 ## Установка
 
 ```sh
-pip install mbtk             # ядро
-pip install "mbtk[max]"      # + MaxApiClient
-pip install "mbtk[redis]"    # + RedisFSMStorage
-pip install "mbtk[all]"      # всё сразу
+pip install mbtk               # ядро
+pip install "mbtk[max]"        # + MaxApiClient
+pip install "mbtk[redis]"      # + RedisFSMStorage и RedisStreamQueue
+pip install "mbtk[fastapi]"    # + ASGI-webhook
+pip install "mbtk[all]"        # всё сразу
 ```
 
 Нужен Python 3.10+.
@@ -126,6 +127,71 @@ dispatcher = Dispatcher(bot=bot, storage=storage)
 
 Своё хранилище можно подключить, реализовав протокол `mbtk.fsm.FSMStorage`.
 
+## Очередь, webhook и worker
+
+`mbtk.transport` описывает контракты очереди, `mbtk.transport.redis_stream`
+содержит реализацию на Redis Streams:
+
+```python
+from mbtk.transport.redis_stream import RedisStreamQueue
+
+queue = RedisStreamQueue.from_url(os.environ["REDIS_URL"])
+await queue.ensure_group()
+```
+
+Проверка webhook без привязки к фреймворку:
+
+```python
+from mbtk.webhook import accept_webhook, validate_webhook
+```
+
+Готовый ASGI-адаптер (extra `[fastapi]`):
+
+```python
+from mbtk.webhook.fastapi import create_app
+
+app = create_app(queue, secret=os.environ["MAX_WEBHOOK_SECRET"])
+```
+
+Worker обрабатывает батчи через протокол `Processor`:
+
+```python
+from mbtk.worker import process_once, termination_signals
+
+
+class MyProcessor:
+    async def process(self, update): ...
+
+
+with termination_signals(stop_event):
+    await process_once(queue, MyProcessor(), "worker-1")
+```
+
+Worker не знает про доменные события: всё, что нужно приложению, живёт
+в `Processor.process`.
+
+## Кэш
+
+```python
+from mbtk.cache.redis import RedisCache
+
+cache = RedisCache(redis, prefix="myapp:ctx", ttl=30)
+await cache.set(("chat", "user"), {"role": "courier"})
+```
+
+`MemoryCache` и `NullCache` доступны из `mbtk.cache`.
+
+## Обработка ошибок
+
+```python
+from mbtk.middleware.errors import DefaultErrorPolicy, ErrorMiddleware
+
+middleware = ErrorMiddleware(DefaultErrorPolicy())
+```
+
+Своя политика реализует `ErrorPolicy`: transient → повтор, silent → без
+сообщения, остальное → текст пользователю и callback alert.
+
 ## Основные понятия
 
 | Понятие | Модуль | Назначение |
@@ -140,7 +206,7 @@ dispatcher = Dispatcher(bot=bot, storage=storage)
 
 ## Статус
 
-Версия `0.1.x`: API может меняться до `1.0`. Ломающие изменения
+Версия `0.2.x`: API может меняться до `1.0`. Ломающие изменения
 фиксируются в [CHANGELOG](CHANGELOG.md).
 
 ## Разработка

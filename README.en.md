@@ -35,10 +35,11 @@ storage are available as extras.
 ## Install
 
 ```sh
-pip install mbtk             # core
-pip install "mbtk[max]"      # + MaxApiClient
-pip install "mbtk[redis]"    # + RedisFSMStorage
-pip install "mbtk[all]"      # everything
+pip install mbtk               # core
+pip install "mbtk[max]"        # + MaxApiClient
+pip install "mbtk[redis]"      # + RedisFSMStorage and RedisStreamQueue
+pip install "mbtk[fastapi]"    # + ASGI webhook
+pip install "mbtk[all]"        # everything
 ```
 
 Python 3.10+ is required.
@@ -124,6 +125,72 @@ blocking reads. Use `redis.Redis`, not `redis.asyncio`.
 
 To plug in another backend, implement the `mbtk.fsm.FSMStorage` protocol.
 
+## Queue, webhook, and worker
+
+`mbtk.transport` defines the queue contracts, and
+`mbtk.transport.redis_stream` provides the Redis Streams implementation:
+
+```python
+from mbtk.transport.redis_stream import RedisStreamQueue
+
+queue = RedisStreamQueue.from_url(os.environ["REDIS_URL"])
+await queue.ensure_group()
+```
+
+Framework-agnostic webhook validation:
+
+```python
+from mbtk.webhook import accept_webhook, validate_webhook
+```
+
+Ready-made ASGI adapter (extra `[fastapi]`):
+
+```python
+from mbtk.webhook.fastapi import create_app
+
+app = create_app(queue, secret=os.environ["MAX_WEBHOOK_SECRET"])
+```
+
+The worker processes batches through the `Processor` protocol:
+
+```python
+from mbtk.worker import process_once, termination_signals
+
+
+class MyProcessor:
+    async def process(self, update): ...
+
+
+with termination_signals(stop_event):
+    await process_once(queue, MyProcessor(), "worker-1")
+```
+
+The worker knows nothing about domain events: all application logic lives
+in `Processor.process`.
+
+## Cache
+
+```python
+from mbtk.cache.redis import RedisCache
+
+cache = RedisCache(redis, prefix="myapp:ctx", ttl=30)
+await cache.set(("chat", "user"), {"role": "courier"})
+```
+
+`MemoryCache` and `NullCache` are available from `mbtk.cache`.
+
+## Error handling
+
+```python
+from mbtk.middleware.errors import DefaultErrorPolicy, ErrorMiddleware
+
+middleware = ErrorMiddleware(DefaultErrorPolicy())
+```
+
+A custom policy implements `ErrorPolicy`: transient errors are retried,
+silent errors are dropped, and everything else becomes a user message and
+an optional callback alert.
+
 ## Concepts
 
 | Concept | Module | Purpose |
@@ -138,7 +205,7 @@ To plug in another backend, implement the `mbtk.fsm.FSMStorage` protocol.
 
 ## Status
 
-Version `0.1.x`: the API may change before `1.0`. Breaking changes are
+Version `0.2.x`: the API may change before `1.0`. Breaking changes are
 listed in [CHANGELOG](CHANGELOG.md).
 
 ## Development
