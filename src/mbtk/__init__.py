@@ -18,6 +18,8 @@ from .max.updates import event_id_for, parse_update
 from .middleware import BaseMiddleware
 from .router import Router
 
+__version__ = "0.1.1"
+
 __all__ = [
     "BaseMiddleware",
     "BotStarted",

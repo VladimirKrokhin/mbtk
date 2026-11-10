@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-10
+
+### Added
+
+- `mbtk.__version__` for runtime version introspection.
+
 ## [0.1.0] - 2026-11-10
 
 ### Added
@@ -20,5 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Optional `RedisFSMStorage` with atomic one-shot claims (`mbtk[redis]`).
 - MAX keyboard and attachment builders.
 
-[Unreleased]: https://github.com/VladimirKrokhin/mbtk/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/VladimirKrokhin/mbtk/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/VladimirKrokhin/mbtk/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/VladimirKrokhin/mbtk/releases/tag/v0.1.0
