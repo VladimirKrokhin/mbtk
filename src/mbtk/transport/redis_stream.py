@@ -8,6 +8,7 @@ Requires the ``redis`` extra::
 import hashlib
 import json
 import logging
+import time
 
 from ..max.updates import event_id_for
 from . import QueuedUpdate
@@ -122,6 +123,23 @@ class RedisStreamQueue:
     async def acknowledge(self, entry_id):
         await self.client.eval(
             self.ACK_DELETE_SCRIPT, 1, self.stream, self.group, entry_id
+        )
+
+    async def dead_letter(self, entry_id, event_id, update, reason):
+        """Persist a dropped event for manual replay/inspection."""
+        await self.client.xadd(
+            f"{self.stream}:dead",
+            {
+                "entry_id": entry_id,
+                "event_id": event_id,
+                "body": json.dumps(
+                    update, sort_keys=True, separators=(",", ":")
+                ),
+                "reason": reason,
+                "failed_at": str(int(time.time())),
+            },
+            maxlen=10000,
+            approximate=True,
         )
 
     async def record_failure(self, entry_id):

@@ -45,7 +45,7 @@ async def process_once(
     failed = 0
     now_ms = time.time_ns() // 1_000_000
     oldest_lag_ms = 0
-    for entry_id, _event_id, update in records:
+    for entry_id, event_id, update in records:
         if stop_event is not None and stop_event.is_set():
             break
         if lag_ms := _entry_lag_ms(entry_id, now_ms):
@@ -57,13 +57,22 @@ async def process_once(
             # Never log event bodies, API responses, or credentials.
             log.error("MAX event processing failed (%s)", type(error).__name__)
             if is_permanent_error(error):
-                # A retry cannot help. Without an acknowledgement the event
-                # would stay in the pending list forever and resend already
-                # delivered messages.
+                # A retry cannot help. Move the event to the dead-letter
+                # stream before acknowledging: otherwise the user's action
+                # disappears without a trace.
+                reason = (
+                    "permanent:"
+                    f"{getattr(error, 'status', None) or 'unknown'}:"
+                    f"{getattr(error, 'code', None) or 'unknown'}"
+                )
+                if not await _dead_letter(
+                    queue, entry_id, event_id, update, reason, log
+                ):
+                    continue
                 await queue.acknowledge(entry_id)
                 await _clear_failure(queue, entry_id)
                 log.warning(
-                    "MAX event dropped after permanent rejection "
+                    "MAX event moved to dead-letter after permanent rejection "
                     "status=%s code=%s",
                     getattr(error, "status", None) or "unknown",
                     getattr(error, "code", None) or "unknown",
@@ -72,11 +81,21 @@ async def process_once(
             attempts = await _record_failure(queue, entry_id)
             if attempts >= max_attempts:
                 # A transient error can be poisoned (for example, a handler
-                # bug behind a 500). Drop it after a bounded number of tries.
+                # bug behind a 500). Keep it in the dead-letter stream.
+                if not await _dead_letter(
+                    queue,
+                    entry_id,
+                    event_id,
+                    update,
+                    f"transient:max_attempts:{type(error).__name__}",
+                    log,
+                ):
+                    continue
                 await queue.acknowledge(entry_id)
                 await _clear_failure(queue, entry_id)
                 log.error(
-                    "MAX event dropped after %d transient errors (%s)",
+                    "MAX event moved to dead-letter after %d transient "
+                    "errors (%s)",
                     attempts,
                     type(error).__name__,
                 )
@@ -93,6 +112,23 @@ async def process_once(
             oldest_lag_ms,
         )
     return len(records)
+
+
+async def _dead_letter(queue, entry_id, event_id, update, reason, log):
+    """Persist a dropped event; return False if it could not be stored.
+
+    Without a successful dead-letter write the source entry must stay
+    pending: acknowledging it would lose the event.
+    """
+    handler = getattr(queue, "dead_letter", None)
+    if handler is None:
+        return True
+    try:
+        await handler(entry_id, event_id, update, reason)
+    except Exception as error:
+        log.error("MAX dead-letter write failed (%s)", type(error).__name__)
+        return False
+    return True
 
 
 async def _record_failure(queue, entry_id):

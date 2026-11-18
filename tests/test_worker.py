@@ -17,6 +17,7 @@ class FakeQueue:
         self.failures = dict(failures or {})
         self.acked = []
         self.cleared = []
+        self.dead = []
         self.consumer = None
         self.count = None
 
@@ -34,6 +35,9 @@ class FakeQueue:
 
     async def clear_failure(self, entry_id):
         self.cleared.append(entry_id)
+
+    async def dead_letter(self, entry_id, event_id, update, reason):
+        self.dead.append((entry_id, event_id, update, reason))
 
 
 class Processor:
@@ -78,6 +82,9 @@ class ProcessOnceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(queue.acked, ["1000-0"])
         self.assertEqual(queue.cleared, ["1000-0"])
         self.assertNotIn("1000-0", queue.failures)
+        self.assertEqual(len(queue.dead), 1)
+        self.assertEqual(queue.dead[0][0], "1000-0")
+        self.assertIn("permanent", queue.dead[0][3])
 
     async def test_transient_error_remains_pending(self):
         queue = FakeQueue([record()])
@@ -100,6 +107,23 @@ class ProcessOnceTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(queue.acked, ["1000-0"])
         self.assertEqual(queue.cleared, ["1000-0"])
+        self.assertEqual(len(queue.dead), 1)
+        self.assertIn("transient", queue.dead[0][3])
+
+    async def test_dead_letter_failure_does_not_ack_permanent_event(self):
+        queue = FakeQueue([record()])
+
+        async def broken_dead_letter(*_args):
+            raise RuntimeError("redis down")
+
+        queue.dead_letter = broken_dead_letter
+        processor = Processor(
+            RemoteServiceError("forbidden", 403, service="MAX")
+        )
+
+        await process_once(queue, processor, "worker-1")
+
+        self.assertEqual(queue.acked, [])
 
     async def test_stop_event_leaves_unprocessed_records_pending(self):
         stop = Event()

@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-18
+
+### Added
+
+- Dead-letter stream `<stream>:dead` for events dropped after permanent
+  rejection or exhausted transient retries. A failed dead-letter write
+  leaves the source event pending instead of acknowledging it.
+
 ## [0.2.0] - 2026-11-10
 
 ### Added
